@@ -29,6 +29,7 @@
 						});
 
 						function _invoke(data){
+							console.log('do invoke', data)
 							var dfd = new $.Deferred();
 							$.ajax({
 								data: { type: 'ps', data: data, json: true },
@@ -52,16 +53,36 @@
 							var args = Array.prototype.slice.call(arguments).slice(1);
 							var data =	method + '('+ $.map(args, function(i){ if ( typeof i == 'string' ) return '"'+i+'"'; return i; }) + ')';
 							console.log(data, arguments, args);
-							this.deferreds.push(data);
+							this.deferreds.push(function() { return _invoke(data);});
 							return this;
 						}
 						this.then = function(callback){
-							console.log(this, 'then', arguments);	
-							$.when.apply($, $.map(this.deferreds, function(d){ return _invoke(d); }))
+							console.log(this, 'then', arguments);
+							var busy = false,
+								funcs = this.deferreds;
+
+							(function loop(){
+								if ( funcs.length == 0 ) {
+									callback();
+									return; 
+								}
+								if ( ! busy ) {
+									var fn = funcs.shift();
+									busy = true;
+									fn().then(function(){
+										busy = false;
+									});
+								}
+								setTimeout(loop, 100);
+							})();
+			
+
+								
+							/*$.when.apply($, $.map(this.deferreds, function(d){ return _invoke(d); }))
 								.then(function(){
 									console.log('when done');
 									callback();				
-								});
+								});*/
 						}
 					}
 
