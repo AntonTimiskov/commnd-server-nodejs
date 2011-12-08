@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>WebSocket Chat</title>
+		<script type="text/javascript" src="libs/jquery-1.7.1.min.js"></script>
+		<script type="text/javascript" src="libs/jquery.json-2.3.min.js"></script>
+	</head>
+	<body>
+		<h1>Examples</h1>
+		<div id="section1" class="section">
+			<h2>Load PS library</h2>
+			<p class="input"></p>
+			<p class="content output"></p>
+			<script type="text/javascript">
+				$(function(){
+					function PS(){
+						var thisPS = this;
+						this.PS = this;
+						this.server_url = 'http://riurik:8080/';
+						this.deferreds = [];
+							
+						$.ajaxSetup({
+							url: this.server_url,
+							dataType: 'jsonp',
+							cache: false,
+							async: true,
+							method: 'GET'
+						});
+
+						function _invoke(data){
+							var dfd = new $.Deferred();
+							$.ajax({
+								data: { type: 'ps', data: data, json: true },
+								success: function(out) {
+									$('#section1 .output').html(out.replace('/\r/g', '<br/>'));
+									console.log('out', out);
+									dfd.resolve();
+								}, 
+								error: function(a,b,error){
+									var out = error.message;
+									$('#section1 .output').html(out.replace('/\r/g', '<br/>'));
+									console.log('err', out);
+									dfd.reject();
+								}
+							});
+							return dfd.promise();
+						}
+						this.invoke = function(method, arg1, arg2, arg3){
+							console.log(this, 'invoke', arguments);
+							var dfd = new $.Deferred();
+							var args = Array.prototype.slice.call(arguments).slice(1);
+							var data =	method + '('+ $.map(args, function(i){ if ( typeof i == 'string' ) return '"'+i+'"'; return i; }) + ')';
+							console.log(data, arguments, args);
+							this.deferreds.push(data);
+							return this;
+						}
+						this.then = function(callback){
+							console.log(this, 'then', arguments);	
+							$.when.apply($, $.map(this.deferreds, function(d){ return _invoke(d); }))
+								.then(function(){
+									console.log('when done');
+									callback();				
+								});
+						}
+					}
+
+
+					(new PS())
+						.invoke('RemoveFolder', 'c:\\1')
+						.invoke('CreateFolder', 'c:\\1')
+						.invoke('UnknownFunction')
+						.then(function(){ alert('done'); });
+				});
+			</script>
+		<div>
+		
+	</body>
+</html>
