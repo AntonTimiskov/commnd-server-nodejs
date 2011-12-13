@@ -15,7 +15,6 @@ function ScriptExecuter(type, lines, paths) {
 			fn(lines, function(out, err, exit) {
 				if ( err.length && err.length > 0) {
 					stderr_callback( exit, err);
-					stdout_callback( exit, err );
 					return;
 				}
 				stdout_callback( exit, out );
@@ -48,7 +47,7 @@ function ProcessExecuter(cmd, args, tempfile, lines, callback){
 			exit_code = code;
 			//console.log(out, err)
 			callback( out, err, exit_code );
-			fs.unlink(tempfile);
+			//fs.unlink(tempfile);
 		});
 
 		shell.stdin.end();
@@ -64,7 +63,8 @@ function PowerShellExecuter(lines, callback, paths) {
 	
 	console.log(cmd);
 	var tempfile = temp.path() + '.ps1';
-	return ProcessExecuter('powershell.exe', ['-NonInteractive', '-ExecutionPolicy', 'unrestricted', '-File', tempfile], tempfile, cmd, callback);
+	var psexec = 'C:\\Windows\\Sysnative\\WindowsPowerShell\\v1.0\\powershell.exe';
+	return ProcessExecuter(psexec, ['-NonInteractive', '-ExecutionPolicy', 'unrestricted', '-File', tempfile], tempfile, cmd, callback);
 };
 
 function PythonExecuter(lines, callback) {
@@ -75,19 +75,19 @@ var http = require('http');
 http.createServer(function (req, res) {
 	var params = url.parse(req.url, true).query;
 	//console.log(params, params.type, params.data);
-	function wrap_jsonp(msg) {
-		return	params.callback+'(\''+
+	function wrap_jsonp(msg, callback) {
+		return	callback+'(\''+
 				msg.replace(/'/g,'"').replace(/\\/g,'\\\\').split('\r\n').join('\'+\n\'')+
 				'\');';
 	}
 	ScriptExecuter(params.type, params.data, [params.path])
 		.run(function(code, msg){
-            console.log(params.type+' out: '+msg);
-			if ( params.json ) { msg = wrap_jsonp(msg);	}
+            		console.log(params.type+' out: '+msg);
+			if ( params.json ) { msg = wrap_jsonp(msg, params.callback); }
 			res.end(msg);
         }, function(code, msg){
-            console.log(params.type+' err ('+code+')')
-			res.writeHead( (code == 0) ? 200 : 500, {'Content-Type': 'text/plain'});
+            console.log(params.type+' err ('+code+'): '+msg);
+			if ( params.json ) { msg = wrap_jsonp(msg, params.error); }
 			res.end(msg);
         });
 	}).listen(8080, "0.0.0.0");
