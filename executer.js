@@ -1,5 +1,5 @@
 var sys = require('util'),
-	temp = require('./temp'),
+	temp = require('./tempfile'),
 	url = require('url'),
 	fs = require('fs'),
 	child = require('child_process');
